@@ -6,11 +6,13 @@ from __future__ import absolute_import, division, print_function
 
 import sys
 import traceback
+from types import TracebackType, FrameType
+from typing import List, Optional, Tuple, Type, cast
 
 from six.moves import cStringIO as StringIO
 
-
 def _format_exception(exc_info):
+    # type: (Tuple[Optional[Type[BaseException]], Optional[BaseException], Optional[TracebackType]]) -> str
     """
     Prettyprint an `exc_info` tuple.
 
@@ -26,6 +28,7 @@ def _format_exception(exc_info):
 
 
 def _find_first_app_frame_and_name(additional_ignores=None):
+    # type: (Optional[List[str]]) -> Tuple[FrameType, str]
     """
     Remove all intra-structlog calls and return the relevant app frame.
 
@@ -44,10 +47,11 @@ def _find_first_app_frame_and_name(additional_ignores=None):
             break
         f = f.f_back
         name = f.f_globals.get("__name__") or "?"
-    return f, name
+    return f, cast(str, name)
 
 
 def _format_stack(frame):
+    # type: (FrameType) -> str
     """
     Pretty-print the stack of `frame` like logging would.
     """

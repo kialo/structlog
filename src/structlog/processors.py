@@ -13,6 +13,7 @@ import json
 import operator
 import sys
 import time
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
 
 import six
 
@@ -22,6 +23,9 @@ from structlog._frames import (
     _format_stack,
 )
 
+EventDict = Dict[str, Any]
+ProcessorResult = Union[EventDict, str]
+Processor = Callable[[Any, str, EventDict], ProcessorResult]
 
 class KeyValueRenderer(object):
     """
@@ -45,17 +49,19 @@ class KeyValueRenderer(object):
 
     def __init__(
         self,
-        sort_keys=False,
-        key_order=None,
-        drop_missing=False,
-        repr_native_str=True,
+        sort_keys=False,  # type: bool
+        key_order=None,  # type: Optional[List[str]]
+        drop_missing=False,  # type: bool
+        repr_native_str=True,  # type: bool
     ):
+        # type: (...) -> None
         # Use an optimized version for each case.
         if key_order and sort_keys:
-
+            
             def ordered_items(event_dict):
+                # type: (EventDict) -> List[Tuple[str, Any]]
                 items = []
-                for key in key_order:
+                for key in cast(List[str], key_order):
                     value = event_dict.pop(key, None)
                     if value is not None or not drop_missing:
                         items.append((key, value))
@@ -65,8 +71,9 @@ class KeyValueRenderer(object):
         elif key_order:
 
             def ordered_items(event_dict):
+                # type: (EventDict) -> List[Tuple[str, Any]]
                 items = []
-                for key in key_order:
+                for key in cast(List[str], key_order):
                     value = event_dict.pop(key, None)
                     if value is not None or not drop_missing:
                         items.append((key, value))
@@ -76,6 +83,7 @@ class KeyValueRenderer(object):
         elif sort_keys:
 
             def ordered_items(event_dict):
+                # type: (EventDict) -> List[Tuple[str, Any]]
                 return sorted(event_dict.items())
 
         else:
@@ -88,6 +96,7 @@ class KeyValueRenderer(object):
         else:
 
             def _repr(inst):
+                # type: (Any) -> str
                 if isinstance(inst, str):
                     return inst
                 else:
@@ -96,6 +105,7 @@ class KeyValueRenderer(object):
             self._repr = _repr
 
     def __call__(self, _, __, event_dict):
+        # type: (Any, str, EventDict) -> str
         return " ".join(
             k + "=" + self._repr(v) for k, v in self._ordered_items(event_dict)
         )
@@ -116,10 +126,12 @@ class UnicodeEncoder(object):
     """
 
     def __init__(self, encoding="utf-8", errors="backslashreplace"):
+        # type: (str, str) -> None
         self._encoding = encoding
         self._errors = errors
 
     def __call__(self, logger, name, event_dict):
+        # type: (Any, str, EventDict) -> EventDict
         for key, value in event_dict.items():
             if isinstance(value, six.text_type):
                 event_dict[key] = value.encode(self._encoding, self._errors)
@@ -143,10 +155,12 @@ class UnicodeDecoder(object):
     """
 
     def __init__(self, encoding="utf-8", errors="replace"):
+        # type: (str, str) -> None
         self._encoding = encoding
         self._errors = errors
 
     def __call__(self, logger, name, event_dict):
+        # type: (Any, str, EventDict) -> EventDict
         for key, value in event_dict.items():
             if isinstance(value, bytes):
                 event_dict[key] = value.decode(self._encoding, self._errors)
@@ -179,15 +193,18 @@ class JSONRenderer(object):
     """
 
     def __init__(self, serializer=json.dumps, **dumps_kw):
+        #  type: (Callable[..., str], *Any) -> None
         dumps_kw.setdefault("default", _json_fallback_handler)
         self._dumps_kw = dumps_kw
         self._dumps = serializer
 
     def __call__(self, logger, name, event_dict):
+        # type: (Any, str, EventDict) -> str
         return self._dumps(event_dict, **self._dumps_kw)
 
 
 def _json_fallback_handler(obj):
+    # type: (Any) -> Any
     """
     Serialize custom datatypes and pass the rest to __structlog__ & repr().
     """

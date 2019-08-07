@@ -7,11 +7,12 @@ Logger wrapper and helper class.
 """
 
 from __future__ import absolute_import, division, print_function
+from typing import cast, Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from six import string_types
 
 from structlog.exceptions import DropEvent
-
+from structlog.processors import EventDict, Processor, ProcessorResult
 
 class BoundLoggerBase(object):
     """
@@ -38,6 +39,7 @@ class BoundLoggerBase(object):
     """
 
     def __init__(self, logger, processors, context):
+        # type: (Any, List[Processor], EventDict) -> None
         self._logger = logger
         self._processors = processors
         self._context = context
@@ -60,6 +62,7 @@ class BoundLoggerBase(object):
         return not self.__eq__(other)
 
     def bind(self, **new_values):
+        # type: (**Any) -> BoundLoggerBase
         """
         Return a new logger with *new_values* added to the existing ones.
 
@@ -72,6 +75,7 @@ class BoundLoggerBase(object):
         )
 
     def unbind(self, *keys):
+        # type: (*str) -> BoundLoggerBase
         """
         Return a new logger with *keys* removed from the context.
 
@@ -101,6 +105,7 @@ class BoundLoggerBase(object):
         return bl
 
     def new(self, **new_values):
+        # type: (**Any) -> BoundLoggerBase
         """
         Clear context and binds *initial_values* using :func:`bind`.
 
@@ -116,6 +121,7 @@ class BoundLoggerBase(object):
     # Helper methods for sub-classing concrete BoundLoggers.
 
     def _process_event(self, method_name, event, event_kw):
+        # type: (str, Optional[Any], Dict[str, Any]) -> Tuple[Sequence[Any], Dict[str, Any]]
         """
         Combines creates an `event_dict` and runs the chain.
 
@@ -148,13 +154,14 @@ class BoundLoggerBase(object):
         if event is not None:
             event_dict["event"] = event
         for proc in self._processors:
-            event_dict = proc(self._logger, method_name, event_dict)
+            # The last value might be a string, so we need to ignore types here
+            event_dict = proc(self._logger, method_name, event_dict)  # type: ignore
         if isinstance(event_dict, string_types):
             return (event_dict,), {}
         elif isinstance(event_dict, tuple):
             # In this case we assume that the last processor returned a tuple
             # of ``(args, kwargs)`` and pass it right through.
-            return event_dict
+            return cast(Tuple[Sequence[Any], EventDict], event_dict)
         elif isinstance(event_dict, dict):
             return (), event_dict
         else:
@@ -165,6 +172,7 @@ class BoundLoggerBase(object):
             )
 
     def _proxy_to_logger(self, method_name, event=None, **event_kw):
+        # type: (str, Optional[Any], **Any) -> Any
         """
         Run processor chain on event & call *method_name* on wrapped logger.
 

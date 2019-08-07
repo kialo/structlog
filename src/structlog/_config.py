@@ -13,12 +13,14 @@ import sys
 import warnings
 
 from collections import OrderedDict
+from typing import cast, Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from mypy_extensions import TypedDict
 
+from ._base import BoundLoggerBase
 from ._generic import BoundLogger
-from ._loggers import PrintLoggerFactory
+from ._loggers import LoggerFactory, PrintLoggerFactory
 from .dev import ConsoleRenderer, _has_colorama
-from .processors import StackInfoRenderer, TimeStamper, format_exc_info
-
+from .processors import Processor, StackInfoRenderer, TimeStamper, format_exc_info
 
 """
 .. note::
@@ -28,15 +30,15 @@ from .processors import StackInfoRenderer, TimeStamper, format_exc_info
 _BUILTIN_DEFAULT_PROCESSORS = [
     StackInfoRenderer(),
     format_exc_info,
-    TimeStamper(fmt="%Y-%m-%d %H:%M.%S", utc=False),
+    cast(Processor, TimeStamper(fmt="%Y-%m-%d %H:%M.%S", utc=False)),
     ConsoleRenderer(colors=_has_colorama),
-]
+]  # type: List[Processor]
 if (
     sys.version_info[:2] >= (3, 6)
     or platform.python_implementation() == "PyPy"
 ):
     # Python 3.6+ and PyPy have ordered dicts.
-    _BUILTIN_DEFAULT_CONTEXT_CLASS = dict
+    _BUILTIN_DEFAULT_CONTEXT_CLASS = dict  #  type: Union[Type[Dict], Type[OrderedDict]]
 else:
     _BUILTIN_DEFAULT_CONTEXT_CLASS = OrderedDict
 _BUILTIN_DEFAULT_WRAPPER_CLASS = BoundLogger
@@ -53,7 +55,7 @@ class _Configuration(object):
     default_processors = _BUILTIN_DEFAULT_PROCESSORS[:]
     default_context_class = _BUILTIN_DEFAULT_CONTEXT_CLASS
     default_wrapper_class = _BUILTIN_DEFAULT_WRAPPER_CLASS
-    logger_factory = _BUILTIN_DEFAULT_LOGGER_FACTORY
+    logger_factory = _BUILTIN_DEFAULT_LOGGER_FACTORY  #  type: LoggerFactory
     cache_logger_on_first_use = _BUILTIN_CACHE_LOGGER_ON_FIRST_USE
 
 
@@ -61,6 +63,13 @@ _CONFIG = _Configuration()
 """
 Global defaults used when arguments to :func:`wrap_logger` are omitted.
 """
+ConfigDict = TypedDict('ConfigDict', {
+    'processors': List[Processor],
+    'context_class': Type,
+    'wrapper_class': Type[BoundLogger],
+    'logger_factory': LoggerFactory,
+    'cache_logger_on_first_use': bool,
+})
 
 
 def is_configured():
@@ -77,6 +86,7 @@ def is_configured():
 
 
 def get_config():
+    # type: () -> ConfigDict
     """
     Get a dictionary with the current configuration.
 
@@ -98,6 +108,7 @@ def get_config():
 
 
 def get_logger(*args, **initial_values):
+    # type: (*Any, **Any) -> BoundLoggerLazyProxy
     """
     Convenience function that returns a logger according to configuration.
 
@@ -136,13 +147,14 @@ stick out like a sore thumb in frameworks like Twisted or Zope.
 
 def wrap_logger(
     logger,
-    processors=None,
-    wrapper_class=None,
-    context_class=None,
-    cache_logger_on_first_use=None,
-    logger_factory_args=None,
-    **initial_values
+    processors=None,  # type: Optional[List[Processor]]
+    wrapper_class=None,  # type: Optional[Type[BoundLogger]]
+    context_class=None,  # type: Optional[Type]
+    cache_logger_on_first_use=None,  # type: Optional[bool]
+    logger_factory_args=None,  # type: Optional[Tuple[Any, ...]]
+    **initial_values  # type: Any
 ):
+    # type: (...) -> BoundLoggerLazyProxy
     """
     Create a new bound logger for an arbitrary *logger*.
 
@@ -179,12 +191,13 @@ def wrap_logger(
 
 
 def configure(
-    processors=None,
-    wrapper_class=None,
-    context_class=None,
-    logger_factory=None,
-    cache_logger_on_first_use=None,
+    processors=None,  # type: Optional[List[Processor]]
+    wrapper_class=None,  # type: Optional[Type[BoundLogger]]
+    context_class=None,  # type: Optional[Type]
+    logger_factory=None,  # type: Optional[Callable[..., Any]]
+    cache_logger_on_first_use=None,  # type: Optional[bool]
 ):
+    # type: (...) -> None
     """
     Configures the **global** defaults.
 
@@ -221,12 +234,19 @@ def configure(
     if context_class is not None:
         _CONFIG.default_context_class = context_class
     if logger_factory is not None:
-        _CONFIG.logger_factory = logger_factory
+        _CONFIG.logger_factory = logger_factory  # type: ignore
     if cache_logger_on_first_use is not None:
         _CONFIG.cache_logger_on_first_use = cache_logger_on_first_use
 
 
-def configure_once(*args, **kw):
+def configure_once(
+    processors=None,  # type: Optional[List[Processor]]
+    wrapper_class=None,  # type: Optional[Type[BoundLogger]]
+    context_class=None,  # type: Optional[Type]
+    logger_factory=None,  # type: Optional[Callable[..., Any]]
+    cache_logger_on_first_use=None,  # type: Optional[bool]
+):
+    # type: (...) -> None
     """
     Configures iff structlog isn't configured yet.
 
@@ -236,12 +256,13 @@ def configure_once(*args, **kw):
     Raises a :class:`RuntimeWarning` if repeated configuration is attempted.
     """
     if not _CONFIG.is_configured:
-        configure(*args, **kw)
+        configure(processors, wrapper_class, context_class, logger_factory, cache_logger_on_first_use)
     else:
         warnings.warn("Repeated configuration attempted.", RuntimeWarning)
 
 
 def reset_defaults():
+    # type: () -> None
     """
     Resets global default values to builtin defaults.
 
@@ -251,7 +272,9 @@ def reset_defaults():
     _CONFIG.default_processors = _BUILTIN_DEFAULT_PROCESSORS[:]
     _CONFIG.default_wrapper_class = _BUILTIN_DEFAULT_WRAPPER_CLASS
     _CONFIG.default_context_class = _BUILTIN_DEFAULT_CONTEXT_CLASS
-    _CONFIG.logger_factory = _BUILTIN_DEFAULT_LOGGER_FACTORY
+    # Mypy doesn't support assigning to a callable reference on a class
+    # See https://github.com/python/mypy/issues/708
+    _CONFIG.logger_factory = _BUILTIN_DEFAULT_LOGGER_FACTORY  # type: ignore
     _CONFIG.cache_logger_on_first_use = _BUILTIN_CACHE_LOGGER_ON_FIRST_USE
 
 
@@ -273,14 +296,15 @@ class BoundLoggerLazyProxy(object):
 
     def __init__(
         self,
-        logger,
-        wrapper_class=None,
-        processors=None,
-        context_class=None,
-        cache_logger_on_first_use=None,
-        initial_values=None,
-        logger_factory_args=None,
+        logger,  # type: Type[BoundLogger]
+        wrapper_class=None,  # type: Optional[Type[BoundLogger]]
+        processors=None,  # type: Optional[List[Processor]]
+        context_class=None,  # type: Optional[Type]
+        cache_logger_on_first_use=None,  # type: Optional[bool]
+        initial_values=None,  # type: Optional[Dict[str, Any]]
+        logger_factory_args=None,  # type: Optional[Tuple[Any, ...]]
     ):
+        # type: (...) -> None
         self._logger = logger
         self._wrapper_class = wrapper_class
         self._processors = processors
@@ -299,6 +323,7 @@ class BoundLoggerLazyProxy(object):
         )
 
     def bind(self, **new_values):
+        # type: (**Any) -> BoundLoggerBase
         """
         Assemble a new BoundLogger from arguments and configuration.
         """
@@ -318,6 +343,7 @@ class BoundLoggerLazyProxy(object):
         logger = cls(_logger, processors=procs, context=ctx)
 
         def finalized_bind(**new_values):
+            # type: (**Any) -> BoundLoggerBase
             """
             Use cached assembled logger to bind potentially new values.
             """
@@ -330,10 +356,12 @@ class BoundLoggerLazyProxy(object):
             self._cache_logger_on_first_use is None
             and _CONFIG.cache_logger_on_first_use is True
         ):
-            self.bind = finalized_bind
+            # Mypy doesn't support assigning to a callable reference on a class
+            self.bind = finalized_bind  # type: ignore
         return finalized_bind(**new_values)
 
     def unbind(self, *keys):
+        # type: (*str) -> BoundLoggerBase
         """
         Same as bind, except unbind *keys* first.
 
@@ -342,6 +370,7 @@ class BoundLoggerLazyProxy(object):
         return self.bind().unbind(*keys)
 
     def new(self, **new_values):
+        # type: (**Any) -> BoundLoggerBase
         """
         Clear context, then bind.
         """

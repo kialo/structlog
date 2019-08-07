@@ -15,10 +15,10 @@ import json
 import sys
 
 from six import PY2, string_types
-from twisted.python import log
-from twisted.python.failure import Failure
-from twisted.python.log import ILogObserver, textFromEventDict
-from zope.interface import implementer
+from twisted.python import log  # type: ignore
+from twisted.python.failure import Failure  # type: ignore
+from twisted.python.log import ILogObserver, textFromEventDict  # type: ignore
+from zope.interface import implementer  # type: ignore
 
 from ._base import BoundLoggerBase
 from ._config import _BUILTIN_DEFAULT_PROCESSORS

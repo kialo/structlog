@@ -10,9 +10,12 @@ from __future__ import absolute_import, division, print_function
 
 import sys
 import threading
+from typing import IO, Any, Callable, Dict, Optional, Tuple, Union
 
 from structlog._utils import until_not_interrupted
 
+# TODO: Specify?
+LoggerFactory = Callable
 
 class PrintLoggerFactory(object):
     r"""
@@ -28,13 +31,15 @@ class PrintLoggerFactory(object):
     """
 
     def __init__(self, file=None):
+        # type: (Optional[IO]) -> None
         self._file = file
 
     def __call__(self, *args):
+        # type: (*Any) -> PrintLogger
         return PrintLogger(self._file)
 
 
-WRITE_LOCKS = {}
+WRITE_LOCKS = {}  # type: Dict[IO, threading.Lock]
 
 
 class PrintLogger(object):
@@ -55,6 +60,7 @@ class PrintLogger(object):
     """
 
     def __init__(self, file=None):
+        # type: (Optional[IO]) -> None
         self._file = file or sys.stdout
         self._write = self._file.write
         self._flush = self._file.flush
@@ -66,9 +72,11 @@ class PrintLogger(object):
         self._lock = lock
 
     def __repr__(self):
+        # type: () -> str
         return "<PrintLogger(file={0!r})>".format(self._file)
 
     def msg(self, message):
+        # type: (str) -> None
         """
         Print *message*.
         """
@@ -92,9 +100,11 @@ class ReturnLoggerFactory(object):
     """
 
     def __init__(self):
+        # type: () -> None
         self._logger = ReturnLogger()
 
     def __call__(self, *args):
+        # type: (*Any) -> ReturnLogger
         return self._logger
 
 
@@ -115,6 +125,7 @@ class ReturnLogger(object):
     """
 
     def msg(self, *args, **kw):
+        # type: (*Any, **Any) -> Union[Any, Tuple[Tuple[Any, ...], Dict[str, Any]]]
         """
         Return tuple of ``args, kw`` or just ``args[0]`` if only one arg passed
         """

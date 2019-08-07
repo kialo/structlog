@@ -9,19 +9,22 @@ Primitives to keep context global but thread (and greenlet) local.
 from __future__ import absolute_import, division, print_function
 
 import contextlib
+from typing import Any, Iterator, Type, Union
 import uuid
 
 from structlog._config import BoundLoggerLazyProxy
+from structlog._base import BoundLoggerBase
 
 
 try:
-    from greenlet import getcurrent
+    from greenlet import getcurrent  # type: ignore
 except ImportError:
     from threading import local as ThreadLocal
 else:
     from weakref import WeakKeyDictionary
 
-    class ThreadLocal(object):
+    # Mypy has issues with conditional imports: https://github.com/python/mypy/issues/1297
+    class ThreadLocal(object):  # type: ignore
         """
         threading.local() replacement for greenlets.
         """
@@ -49,6 +52,7 @@ else:
 
 
 def wrap_dict(dict_class):
+    # type: (Type) -> Type
     """
     Wrap a dict-like class and return the resulting class.
 
@@ -61,12 +65,13 @@ def wrap_dict(dict_class):
     Wrapped = type(
         "WrappedDict-" + str(uuid.uuid4()), (_ThreadLocalDictWrapper,), {}
     )
-    Wrapped._tl = ThreadLocal()
-    Wrapped._dict_class = dict_class
+    setattr(Wrapped, '_tl', ThreadLocal())
+    setattr(Wrapped, '_dict_class', dict_class)
     return Wrapped
 
 
 def as_immutable(logger):
+    # type: (Union[BoundLoggerBase, BoundLoggerLazyProxy]) -> BoundLoggerBase
     """
     Extract the context from a thread local logger into an immutable logger.
 
@@ -78,7 +83,7 @@ def as_immutable(logger):
         logger = logger.bind()
 
     try:
-        ctx = logger._context._tl.dict_.__class__(logger._context._dict)
+        ctx = getattr(logger._context, '_tl').dict_.__class__(getattr(logger._context, '_dict'))
         bl = logger.__class__(
             logger._logger, processors=logger._processors, context={}
         )
@@ -90,6 +95,7 @@ def as_immutable(logger):
 
 @contextlib.contextmanager
 def tmp_bind(logger, **tmp_values):
+    # type: (Union[BoundLoggerBase, BoundLoggerLazyProxy], **Any) -> Iterator[BoundLoggerBase]
     """
     Bind *tmp_values* to *logger* & memorize current state. Rewind afterwards.
     """
@@ -114,6 +120,7 @@ class _ThreadLocalDictWrapper(object):
     """
 
     def __init__(self, *args, **kw):
+        # type: (*Any, **Any) -> None
         """
         We cheat.  A context dict gets never recreated.
         """

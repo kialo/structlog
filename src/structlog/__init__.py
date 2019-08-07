@@ -33,7 +33,7 @@ from structlog.exceptions import DropEvent
 try:
     from structlog import twisted
 except ImportError:  # pragma: nocover
-    twisted = None
+    twisted = None  # type: ignore
 
 
 __version__ = "19.2.0.dev0"
