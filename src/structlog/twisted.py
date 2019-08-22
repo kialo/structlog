@@ -25,6 +25,8 @@ from ._config import _BUILTIN_DEFAULT_PROCESSORS
 from ._utils import until_not_interrupted
 from .processors import JSONRenderer as GenericJSONRenderer
 
+from typing import Any, Optional
+
 
 class BoundLogger(BoundLoggerBase):
     """
@@ -42,12 +44,14 @@ class BoundLogger(BoundLoggerBase):
     """
 
     def msg(self, event=None, **kw):
+        # type: (Optional[str], **Any) -> Any
         """
         Process event and call ``log.msg()`` with the result.
         """
         return self._proxy_to_logger("msg", event, **kw)
 
     def err(self, event=None, **kw):
+        # type: (Optional[str], **Any) -> Any
         """
         Process event and call ``log.err()`` with the result.
         """
@@ -64,6 +68,7 @@ class LoggerFactory(object):
     """
 
     def __call__(self, *args):
+        # type: (*Any) -> Any
         """
         Positional arguments are silently ignored.
 

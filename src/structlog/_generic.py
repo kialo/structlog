@@ -12,6 +12,8 @@ from functools import partial
 
 from structlog._base import BoundLoggerBase
 
+from typing import Any
+
 
 class BoundLogger(BoundLoggerBase):
     """
@@ -27,6 +29,7 @@ class BoundLogger(BoundLoggerBase):
     """
 
     def __getattr__(self, method_name):
+        # type: (str) -> Any
         """
         If not done so yet, wrap the desired logger method & cache the result.
         """

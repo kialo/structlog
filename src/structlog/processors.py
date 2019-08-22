@@ -13,7 +13,19 @@ import json
 import operator
 import sys
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
+
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    IO,
+    List,
+    Optional,
+    Tuple,
+    Union,
+    cast
+)
 
 import six
 
@@ -23,9 +35,13 @@ from structlog._frames import (
     _format_stack,
 )
 
+if TYPE_CHECKING:
+    from ._base import BoundLoggerBase
+
 EventDict = Dict[str, Any]
 ProcessorResult = Union[EventDict, str]
 Processor = Callable[[Any, str, EventDict], ProcessorResult]
+
 
 class KeyValueRenderer(object):
     """
@@ -92,7 +108,7 @@ class KeyValueRenderer(object):
         self._ordered_items = ordered_items
 
         if repr_native_str is True:
-            self._repr = repr
+            self._repr = repr  # type: Callable[[Any], str]
         else:
 
             def _repr(inst):
@@ -130,8 +146,13 @@ class UnicodeEncoder(object):
         self._encoding = encoding
         self._errors = errors
 
-    def __call__(self, logger, name, event_dict):
-        # type: (Any, str, EventDict) -> EventDict
+    def __call__(
+        self,
+        logger,  # type: Optional[BoundLoggerBase]
+        name,  # type: Optional[str]
+        event_dict  # type: EventDict
+    ):
+        # type: (...) -> EventDict
         for key, value in event_dict.items():
             if isinstance(value, six.text_type):
                 event_dict[key] = value.encode(self._encoding, self._errors)
@@ -159,8 +180,13 @@ class UnicodeDecoder(object):
         self._encoding = encoding
         self._errors = errors
 
-    def __call__(self, logger, name, event_dict):
-        # type: (Any, str, EventDict) -> EventDict
+    def __call__(
+        self,
+        logger,  # type: Optional[BoundLoggerBase]
+        name,  # type: Optional[str]
+        event_dict  # type: EventDict
+    ):
+        # type: (...) -> EventDict
         for key, value in event_dict.items():
             if isinstance(value, bytes):
                 event_dict[key] = value.decode(self._encoding, self._errors)
@@ -199,7 +225,7 @@ class JSONRenderer(object):
         self._dumps = serializer
 
     def __call__(self, logger, name, event_dict):
-        # type: (Any, str, EventDict) -> str
+        # type: (Optional[BoundLoggerBase], Optional[str], EventDict) -> str
         return self._dumps(event_dict, **self._dumps_kw)
 
 
@@ -221,6 +247,7 @@ def _json_fallback_handler(obj):
 
 
 def format_exc_info(logger, name, event_dict):
+    # type: (Optional[BoundLoggerBase], Optional[str], EventDict) -> EventDict
     """
     Replace an `exc_info` field by an `exception` string field:
 
@@ -261,6 +288,7 @@ class TimeStamper(object):
     """
 
     def __new__(cls, fmt=None, utc=True, key="timestamp"):
+        # type: (Optional[str], bool, str) -> TimeStamper
         if fmt is None and not utc:
             raise ValueError("UNIX timestamps are always UTC.")
 
@@ -268,6 +296,7 @@ class TimeStamper(object):
         if fmt is None:
 
             def stamper(self, _, __, event_dict):
+                # type: (TimeStamper, Any, Any, EventDict) -> EventDict
                 event_dict[key] = time.time()
                 return event_dict
 
@@ -275,25 +304,29 @@ class TimeStamper(object):
             if utc:
 
                 def stamper(self, _, __, event_dict):
+                    # type: (TimeStamper, Any, Any, EventDict) -> EventDict
                     event_dict[key] = now_method().isoformat() + "Z"
                     return event_dict
 
             else:
 
                 def stamper(self, _, __, event_dict):
+                    # type: (TimeStamper, Any, Any, EventDict) -> EventDict
                     event_dict[key] = now_method().isoformat()
                     return event_dict
 
         else:
 
             def stamper(self, _, __, event_dict):
+                # type: (TimeStamper, Any, Any, EventDict) -> EventDict
                 event_dict[key] = now_method().strftime(fmt)
                 return event_dict
 
-        return type("TimeStamper", (object,), {"__call__": stamper})()
+        return cast(TimeStamper, type("TimeStamper", (object,), {"__call__": stamper})())
 
 
 def _figure_out_exc_info(v):
+    # type: (Any) -> Any
     """
     Depending on the Python version will try to do the smartest thing possible
     to transform *v* into an ``exc_info`` tuple.
@@ -333,12 +366,19 @@ class ExceptionPrettyPrinter(object):
     """
 
     def __init__(self, file=None):
+        # type: (Optional[IO]) -> None
         if file is not None:
             self._file = file
         else:
             self._file = sys.stdout
 
-    def __call__(self, logger, name, event_dict):
+    def __call__(
+        self,
+        logger,  # type: Optional[BoundLoggerBase]
+        name,  # type: Optional[str]
+        event_dict  # type: EventDict
+    ):
+        # type: (...) -> EventDict
         exc = event_dict.pop("exception", None)
         if exc is None:
             exc_info = _figure_out_exc_info(event_dict.pop("exc_info", None))
@@ -362,7 +402,13 @@ class StackInfoRenderer(object):
     .. versionadded:: 0.4.0
     """
 
-    def __call__(self, logger, name, event_dict):
+    def __call__(
+        self,
+        logger,  # type: Optional[BoundLoggerBase]
+        name,  # type: Optional[str]
+        event_dict  # type: EventDict
+    ):
+        # type: (...) -> EventDict
         if event_dict.pop("stack_info", None):
             event_dict["stack"] = _format_stack(
                 _find_first_app_frame_and_name()[0]

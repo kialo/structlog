@@ -13,14 +13,29 @@ import sys
 import warnings
 
 from collections import OrderedDict
-from typing import cast, Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from typing import (
+    cast,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    Union
+)
 from mypy_extensions import TypedDict
 
 from ._base import BoundLoggerBase
 from ._generic import BoundLogger
 from ._loggers import LoggerFactory, PrintLoggerFactory
 from .dev import ConsoleRenderer, _has_colorama
-from .processors import Processor, StackInfoRenderer, TimeStamper, format_exc_info
+from .processors import (
+    Processor,
+    StackInfoRenderer,
+    TimeStamper,
+    format_exc_info
+)
 
 """
 .. note::
@@ -73,6 +88,7 @@ ConfigDict = TypedDict('ConfigDict', {
 
 
 def is_configured():
+    # type: () -> bool
     """
     Return whether ``structlog`` has been configured.
 
@@ -146,9 +162,9 @@ stick out like a sore thumb in frameworks like Twisted or Zope.
 
 
 def wrap_logger(
-    logger,
+    logger,  # type: Optional[BoundLoggerBase]
     processors=None,  # type: Optional[List[Processor]]
-    wrapper_class=None,  # type: Optional[Type[BoundLogger]]
+    wrapper_class=None,  # type: Optional[Type[BoundLoggerBase]]
     context_class=None,  # type: Optional[Type]
     cache_logger_on_first_use=None,  # type: Optional[bool]
     logger_factory_args=None,  # type: Optional[Tuple[Any, ...]]
@@ -192,7 +208,7 @@ def wrap_logger(
 
 def configure(
     processors=None,  # type: Optional[List[Processor]]
-    wrapper_class=None,  # type: Optional[Type[BoundLogger]]
+    wrapper_class=None,  # type: Optional[Type[BoundLoggerBase]]
     context_class=None,  # type: Optional[Type]
     logger_factory=None,  # type: Optional[Callable[..., Any]]
     cache_logger_on_first_use=None,  # type: Optional[bool]
@@ -296,8 +312,8 @@ class BoundLoggerLazyProxy(object):
 
     def __init__(
         self,
-        logger,  # type: Type[BoundLogger]
-        wrapper_class=None,  # type: Optional[Type[BoundLogger]]
+        logger,  # type: Optional[BoundLoggerBase]
+        wrapper_class=None,  # type: Optional[Type[BoundLoggerBase]]
         processors=None,  # type: Optional[List[Processor]]
         context_class=None,  # type: Optional[Type]
         cache_logger_on_first_use=None,  # type: Optional[bool]
@@ -314,6 +330,7 @@ class BoundLoggerLazyProxy(object):
         self._logger_factory_args = logger_factory_args or ()
 
     def __repr__(self):
+        # type: () -> str
         return (
             "<BoundLoggerLazyProxy(logger={0._logger!r}, wrapper_class="
             "{0._wrapper_class!r}, processors={0._processors!r}, "
@@ -382,9 +399,10 @@ class BoundLoggerLazyProxy(object):
         return bl
 
     def __getattr__(self, name):
+        # type: (str) -> str
         """
         If a logging method if called on a lazy proxy, we have to create an
         ephemeral BoundLogger first.
         """
         bl = self.bind()
-        return getattr(bl, name)
+        return cast(str, getattr(bl, name))

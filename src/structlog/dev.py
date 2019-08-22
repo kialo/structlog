@@ -7,7 +7,7 @@ Helpers that make development with ``structlog`` more pleasant.
 """
 
 from __future__ import absolute_import, division, print_function
-from typing import Any, Dict, Optional, Type
+from typing import Any, Callable, Dict, Optional, Type
 from six import StringIO
 
 
@@ -169,7 +169,7 @@ class ConsoleRenderer(object):
         )
 
         if repr_native_str is True:
-            self._repr = repr
+            self._repr = repr  # type: Callable[[Any], str]
         else:
 
             def _repr(inst):

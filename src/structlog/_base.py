@@ -14,6 +14,7 @@ from six import string_types
 from structlog.exceptions import DropEvent
 from structlog.processors import EventDict, Processor, ProcessorResult
 
+
 class BoundLoggerBase(object):
     """
     Immutable context carrier.
@@ -45,11 +46,15 @@ class BoundLoggerBase(object):
         self._context = context
 
     def __repr__(self):
+        # type: () -> str
         return "<{0}(context={1!r}, processors={2!r})>".format(
             self.__class__.__name__, self._context, self._processors
         )
 
     def __eq__(self, other):
+        # type: (object) -> bool
+        if not isinstance(other, BoundLoggerBase):
+            return NotImplemented
         try:
             if self._context == other._context:
                 return True
@@ -59,6 +64,7 @@ class BoundLoggerBase(object):
             return False
 
     def __ne__(self, other):
+        # type: (object) -> bool
         return not self.__eq__(other)
 
     def bind(self, **new_values):
@@ -89,6 +95,7 @@ class BoundLoggerBase(object):
         return bl
 
     def try_unbind(self, *keys):
+        # type: (*str) -> BoundLoggerBase
         """
         Like :meth:`unbind`, but best effort:  missing keys are ignored.
 

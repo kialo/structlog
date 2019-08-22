@@ -19,6 +19,16 @@ from structlog._base import BoundLoggerBase
 from structlog._frames import _find_first_app_frame_and_name, _format_stack
 from structlog.exceptions import DropEvent
 
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Tuple
+)
+from .processors import EventDict
+if TYPE_CHECKING:
+    from logging import Logger
+
 
 class _FixedFindCallerLogger(logging.Logger):
     """
@@ -358,6 +368,7 @@ _LEVEL_TO_NAME = dict(
 
 
 def filter_by_level(logger, name, event_dict):
+    # type: (BoundLogger, str, EventDict) -> EventDict
     """
     Check whether logging is configured to accept messages from this log level.
 
@@ -544,6 +555,7 @@ class ProcessorFormatter(logging.Formatter):
 
     @staticmethod
     def wrap_for_formatter(logger, name, event_dict):
+        # type: (BoundLogger, str, EventDict) -> Tuple[Tuple[EventDict], Dict[str, Dict[str, Any]]]
         """
         Wrap *logger*, *name*, and *event_dict*.
 

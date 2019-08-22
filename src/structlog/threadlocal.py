@@ -19,7 +19,7 @@ from structlog._base import BoundLoggerBase
 try:
     from greenlet import getcurrent  # type: ignore
 except ImportError:
-    from threading import local as ThreadLocal
+    from threading import local as ThreadLocal  # type: ignore
 else:
     from weakref import WeakKeyDictionary
 
@@ -30,9 +30,11 @@ else:
         """
 
         def __init__(self):
+            # type: () -> None
             self.__dict__["_weakdict"] = WeakKeyDictionary()
 
         def __getattr__(self, name):
+            # type: (str) -> Any
             key = getcurrent()
             try:
                 return self._weakdict[key][name]
@@ -40,10 +42,12 @@ else:
                 raise AttributeError(name)
 
         def __setattr__(self, name, val):
+            # type: (str, str) -> None
             key = getcurrent()
             self._weakdict.setdefault(key, {})[name] = val
 
         def __delattr__(self, name):
+            # type: (str) -> None
             key = getcurrent()
             try:
                 del self._weakdict[key][name]
