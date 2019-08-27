@@ -23,11 +23,12 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Dict,
-    Tuple
+    Optional,
+    Tuple,
+    Union,
+    cast
 )
 from .processors import EventDict
-if TYPE_CHECKING:
-    from logging import Logger
 
 
 class _FixedFindCallerLogger(logging.Logger):
@@ -35,7 +36,8 @@ class _FixedFindCallerLogger(logging.Logger):
     Change the behavior of findCaller to cope with structlog's extra frames.
     """
 
-    def findCaller(self, stack_info=False, stacklevel=1):
+    # Mypy does not allow subtypes incompatible with supertypes https://github.com/python/mypy/issues/1237
+    def findCaller(self, stack_info=False, stacklevel=1):  # type: ignore
         """
         Finds the first caller frame outside of structlog so that the caller
         info is populated for wrapping stdlib.
@@ -44,7 +46,7 @@ class _FixedFindCallerLogger(logging.Logger):
         f, name = _find_first_app_frame_and_name(["logging"])
         if PY3:
             if stack_info:
-                sinfo = _format_stack(f)
+                sinfo = _format_stack(f)  # type: Optional[str]
             else:
                 sinfo = None
             return f.f_code.co_filename, f.f_lineno, f.f_code.co_name, sinfo
@@ -70,18 +72,21 @@ class BoundLogger(BoundLoggerBase):
     """
 
     def debug(self, event=None, *args, **kw):
+        # type: (Any, *Any, **Any) -> Any
         """
         Process event and call :meth:`logging.Logger.debug` with the result.
         """
         return self._proxy_to_logger("debug", event, *args, **kw)
 
     def info(self, event=None, *args, **kw):
+        # type: (Any, *Any, **Any) -> Any
         """
         Process event and call :meth:`logging.Logger.info` with the result.
         """
         return self._proxy_to_logger("info", event, *args, **kw)
 
     def warning(self, event=None, *args, **kw):
+        # type: (Any, *Any, **Any) -> Any
         """
         Process event and call :meth:`logging.Logger.warning` with the result.
         """
@@ -90,18 +95,21 @@ class BoundLogger(BoundLoggerBase):
     warn = warning
 
     def error(self, event=None, *args, **kw):
+        # type: (Any, *Any, **Any) -> Any
         """
         Process event and call :meth:`logging.Logger.error` with the result.
         """
         return self._proxy_to_logger("error", event, *args, **kw)
 
     def critical(self, event=None, *args, **kw):
+        # type: (Any, *Any, **Any) -> Any
         """
         Process event and call :meth:`logging.Logger.critical` with the result.
         """
         return self._proxy_to_logger("critical", event, *args, **kw)
 
     def exception(self, event=None, *args, **kw):
+        # type: (Any, *Any, **Any) -> Any
         """
         Process event and call :meth:`logging.Logger.error` with the result,
         after setting ``exc_info`` to `True`.
@@ -110,6 +118,7 @@ class BoundLogger(BoundLoggerBase):
         return self.error(event, *args, **kw)
 
     def log(self, level, event, *args, **kw):
+        # type: (int, Any, *Any, **Any) -> Any
         """
         Process event and call the appropriate logging method depending on
         `level`.
@@ -118,7 +127,8 @@ class BoundLogger(BoundLoggerBase):
 
     fatal = critical
 
-    def _proxy_to_logger(self, method_name, event, *event_args, **event_kw):
+    def _proxy_to_logger(self, method_name, event, *event_args, **event_kw):  # type: ignore
+        # type: (str, Any, *Any, **Any) -> Any
         """
         Propagate a method call to the wrapped logger.
 
@@ -139,20 +149,23 @@ class BoundLogger(BoundLoggerBase):
 
     @property
     def name(self):
+        # type: () -> str
         """
         Returns :attr:`logging.Logger.name`
         """
-        return self._logger.name
+        return cast(str, self._logger.name)
 
     @property
     def level(self):
+        # type: () -> int
         """
         Returns :attr:`logging.Logger.level`
         """
-        return self._logger.level
+        return cast(int, self._logger.level)
 
     @property
     def parent(self):
+        # type: () -> Any
         """
         Returns :attr:`logging.Logger.parent`
         """

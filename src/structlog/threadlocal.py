@@ -9,7 +9,7 @@ Primitives to keep context global but thread (and greenlet) local.
 from __future__ import absolute_import, division, print_function
 
 import contextlib
-from typing import Any, Iterator, Type, Union
+from typing import Any, Iterator, Type, Union, cast
 import uuid
 
 from structlog._config import BoundLoggerLazyProxy
@@ -17,9 +17,9 @@ from structlog._base import BoundLoggerBase
 
 
 try:
-    from greenlet import getcurrent  # type: ignore
+    from greenlet import getcurrent
 except ImportError:
-    from threading import local as ThreadLocal  # type: ignore
+    from threading import local as ThreadLocal
 else:
     from weakref import WeakKeyDictionary
 
@@ -99,7 +99,7 @@ def as_immutable(logger):
 
 @contextlib.contextmanager
 def tmp_bind(logger, **tmp_values):
-    # type: (Union[BoundLoggerBase, BoundLoggerLazyProxy], **Any) -> Iterator[BoundLoggerBase]
+    # type: (BoundLoggerBase, **Any) -> Iterator[BoundLoggerBase]
     """
     Bind *tmp_values* to *logger* & memorize current state. Rewind afterwards.
     """
@@ -136,7 +136,7 @@ class _ThreadLocalDictWrapper(object):
             self._dict.update(*args, **kw)
 
     @property
-    def _dict(self):
+    def _dict(self):  # type: ignore
         """
         Return or create and return the current context.
         """
@@ -147,29 +147,37 @@ class _ThreadLocalDictWrapper(object):
             return self.__class__._tl.dict_
 
     def __repr__(self):
+        # type: () -> str
         return "<{0}({1!r})>".format(self.__class__.__name__, self._dict)
 
     def __eq__(self, other):
+        # type: (object) -> bool
         # Same class == same dictionary
         return self.__class__ == other.__class__
 
     def __ne__(self, other):
+        # type: (object) -> bool
         return not self.__eq__(other)
 
     # Proxy methods necessary for structlog.
     # Dunder methods don't trigger __getattr__ so we need to proxy by hand.
     def __iter__(self):
+        # type: () -> Any
         return self._dict.__iter__()
 
     def __setitem__(self, key, value):
+        # type: (Any, Any) -> None
         self._dict[key] = value
 
     def __delitem__(self, key):
+        # type: (Any) -> None
         self._dict.__delitem__(key)
 
     def __len__(self):
-        return self._dict.__len__()
+        # type: () -> int
+        return cast(int, self._dict.__len__())
 
     def __getattr__(self, name):
+        # type: (Any) -> Any
         method = getattr(self._dict, name)
         return method

@@ -12,10 +12,11 @@ from six import StringIO
 
 
 try:
-    import colorama  # type: ignore
+    import colorama
 except ImportError:
     colorama = None
 
+from structlog.processors import EventDict
 
 __all__ = ["ConsoleRenderer"]
 
@@ -182,7 +183,7 @@ class ConsoleRenderer(object):
             self._repr = _repr
 
     def __call__(self, _, __, event_dict):
-        # type: (Any, Any, Dict[str, Any]) -> str
+        # type: (Any, Any, EventDict) -> str
         # Initialize lazily to prevent import side-effects.
         if self._init_colorama:
             if self._force_colors:

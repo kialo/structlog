@@ -15,17 +15,18 @@ import json
 import sys
 
 from six import PY2, string_types
-from twisted.python import log  # type: ignore
-from twisted.python.failure import Failure  # type: ignore
-from twisted.python.log import ILogObserver, textFromEventDict  # type: ignore
-from zope.interface import implementer  # type: ignore
+from twisted.python import log
+from twisted.python.failure import Failure
+from twisted.python.log import ILogObserver, textFromEventDict
+from zope.interface import implementer
 
 from ._base import BoundLoggerBase
 from ._config import _BUILTIN_DEFAULT_PROCESSORS
 from ._utils import until_not_interrupted
 from .processors import JSONRenderer as GenericJSONRenderer
 
-from typing import Any, Optional
+from typing import Any, IO, Optional, Tuple
+from structlog.processors import EventDict, Renderer
 
 
 class BoundLogger(BoundLoggerBase):
@@ -84,6 +85,7 @@ _FAIL_TYPES = (BaseException, Failure)
 
 
 def _extractStuffAndWhy(eventDict):
+    # type: (EventDict) -> Tuple[Any, Any, EventDict]
     """
     Removes all possible *_why*s and *_stuff*s, analyzes exc_info and returns
     a tuple of `(_stuff, _why, eventDict)`.
@@ -130,9 +132,11 @@ class ReprWrapper(object):
     """
 
     def __init__(self, string):
+        # type: (str) -> None
         self.string = string
 
     def __eq__(self, other):
+        # type: (object) -> bool
         """
         Check for equality, actually just for tests.
         """
@@ -141,6 +145,7 @@ class ReprWrapper(object):
         )
 
     def __repr__(self):
+        # type: () -> str
         return self.string
 
 
@@ -166,7 +171,7 @@ class JSONRenderer(GenericJSONRenderer):
     like :func:`plainJSONStdOutLogger` for pure-JSON logs.
     """
 
-    def __call__(self, logger, name, eventDict):
+    def __call__(self, logger, name, eventDict):  # type: ignore
         _stuff, _why, eventDict = _extractStuffAndWhy(eventDict)
         if name == "err":
             eventDict["event"] = _why
@@ -200,10 +205,12 @@ class PlainFileLogObserver(object):
     """
 
     def __init__(self, file):
+        # type: (IO) -> None
         self._write = file.write
         self._flush = file.flush
 
     def __call__(self, eventDict):
+        # type: (EventDict) -> None
         until_not_interrupted(self._write, textFromEventDict(eventDict) + "\n")
         until_not_interrupted(self._flush)
 
@@ -222,9 +229,11 @@ class JSONLogObserverWrapper(object):
     """
 
     def __init__(self, observer):
+        # type: (Any) -> None
         self._observer = observer
 
     def __call__(self, eventDict):
+        # type: (EventDict) -> Any
         if "_structlog" not in eventDict:
             eventDict["message"] = (
                 json.dumps(
@@ -239,6 +248,7 @@ class JSONLogObserverWrapper(object):
 
 
 def plainJSONStdOutLogger():
+    # type: () -> JSONLogObserverWrapper
     """
     Return a logger that writes only the message to stdout.
 
@@ -281,12 +291,14 @@ class EventAdapter(object):
     """
 
     def __init__(self, dictRenderer=None):
+        # type: (Optional[Renderer]) -> None
         """
         :param dictRenderer: A processor used to format the log message.
         """
         self._dictRenderer = dictRenderer or _BUILTIN_DEFAULT_PROCESSORS[-1]
 
     def __call__(self, logger, name, eventDict):
+        # type: (BoundLoggerBase, str, EventDict) -> Any
         if name == "err":
             # This aspires to handle the following cases correctly:
             #   - log.err(failure, _why='event', **kw)

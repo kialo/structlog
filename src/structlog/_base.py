@@ -28,7 +28,6 @@ class BoundLoggerBase(object):
     See also :doc:`custom-wrappers`.
     """
 
-    _logger = None
     """
     Wrapped logger.
 

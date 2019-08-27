@@ -41,6 +41,7 @@ if TYPE_CHECKING:
 EventDict = Dict[str, Any]
 ProcessorResult = Union[EventDict, str]
 Processor = Callable[[Any, str, EventDict], ProcessorResult]
+Renderer = Callable[[Any, Any, EventDict], str]
 
 
 class KeyValueRenderer(object):
@@ -121,7 +122,7 @@ class KeyValueRenderer(object):
             self._repr = _repr
 
     def __call__(self, _, __, event_dict):
-        # type: (Any, str, EventDict) -> str
+        # type: (Any, Any, EventDict) -> str
         return " ".join(
             k + "=" + self._repr(v) for k, v in self._ordered_items(event_dict)
         )

@@ -56,7 +56,7 @@ if (
     _BUILTIN_DEFAULT_CONTEXT_CLASS = dict  #  type: Union[Type[Dict], Type[OrderedDict]]
 else:
     _BUILTIN_DEFAULT_CONTEXT_CLASS = OrderedDict
-_BUILTIN_DEFAULT_WRAPPER_CLASS = BoundLogger
+_BUILTIN_DEFAULT_WRAPPER_CLASS = BoundLogger  # type: Type[BoundLoggerBase]
 _BUILTIN_DEFAULT_LOGGER_FACTORY = PrintLoggerFactory()
 _BUILTIN_CACHE_LOGGER_ON_FIRST_USE = False
 
@@ -81,7 +81,7 @@ Global defaults used when arguments to :func:`wrap_logger` are omitted.
 ConfigDict = TypedDict('ConfigDict', {
     'processors': List[Processor],
     'context_class': Type,
-    'wrapper_class': Type[BoundLogger],
+    'wrapper_class': Type[BoundLoggerBase],
     'logger_factory': LoggerFactory,
     'cache_logger_on_first_use': bool,
 })
